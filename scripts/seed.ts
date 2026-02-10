@@ -1,12 +1,15 @@
 import path from "node:path";
 import XLSX from "xlsx";
 import { pool } from "../src/lib/db/mysql";
+import { ALLOWED_MOVEMENT_TYPES, isAllowedMovementType } from "../src/lib/db/movement";
 
 type Row = Record<string, unknown>;
 const file = process.argv[2] || path.join(process.cwd(), "dataset.xlsx");
 
-const toNumber = (x: unknown) => (x == null || x === "" ? 0 : Number(x));
-const toDate = (x: unknown) => (x ? new Date(String(x)) : null);
+const cleanText = (v: unknown) => (v == null ? null : String(v).trim() || null);
+const normalizeInt = (v: unknown) => Math.round(Number.parseFloat(String(v ?? "0")) || 0);
+const normalizeDecimal = (v: unknown) => Number.parseFloat(String(v ?? "0")) || 0;
+const normalizeDate = (v: unknown) => (v ? new Date(String(v)) : null);
 
 async function upsert(sql: string, values: unknown[][]) {
   for (const row of values) await pool.execute(sql, row);
@@ -20,32 +23,40 @@ async function run() {
   const stocks = XLSX.utils.sheet_to_json<Row>(wb.Sheets[stockS]);
   const plants = XLSX.utils.sheet_to_json<Row>(wb.Sheets[plantS]);
   const movements = XLSX.utils.sheet_to_json<Row>(wb.Sheets[movS]);
+  console.log(`Allowed movementType: ${ALLOWED_MOVEMENT_TYPES.join(",")}`);
 
   await upsert(`INSERT INTO users(userId,username,email,password,role,createdOn,lastChange)
     VALUES(?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE username=VALUES(username),email=VALUES(email),password=VALUES(password),role=VALUES(role),lastChange=VALUES(lastChange)`,
-    users.map((x) => [x.user_id, x.username, x.email, x.password, x.role, toDate(x.created_on), toDate(x["Last Change"])]));
+  users.map((x) => [normalizeInt(x.user_id), cleanText(x.username), cleanText(x.email), cleanText(x.password), cleanText(x.role), normalizeDate(x.created_on), normalizeDate(x["Last Change"])]));
 
   await upsert(`INSERT INTO material_master(partNumber,materialDescription,baseUnitOfMeasure,createdOn,createTime,createdBy,materialGroup)
     VALUES(?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE materialDescription=VALUES(materialDescription),baseUnitOfMeasure=VALUES(baseUnitOfMeasure),createdBy=VALUES(createdBy),materialGroup=VALUES(materialGroup)`,
-    masters.map((x) => [x["Part Number"], x["Material description"], x["Base Unit of Measure"], toDate(x["Created On"]), x["Create Time"] || null, x["Created By"], x["Material Group"]]));
+  masters.map((x) => [cleanText(x["Part Number"]), cleanText(x["Material description"]), cleanText(x["Base Unit of Measure"]), normalizeDate(x["Created On"]), cleanText(x["Create Time"]), cleanText(x["Created By"]), cleanText(x["Material Group"])]));
 
   await upsert(`INSERT INTO material_stock(partNumber,plant,freeStock,blocked)
     VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE freeStock=VALUES(freeStock),blocked=VALUES(blocked)`,
-    stocks.map((x) => [x["part number"], x["Plant"], toNumber(x["Free Stock"]), toNumber(x.Blocked)]));
+  stocks.map((x) => [cleanText(x["part number"]), cleanText(x.Plant), normalizeInt(x["Free Stock"]), normalizeInt(x.Blocked)]));
 
   await upsert(`INSERT INTO material_plant_data(partNumber,plant,reorderPoint,safetyStock)
     VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE reorderPoint=VALUES(reorderPoint),safetyStock=VALUES(safetyStock)`,
-    plants.map((x) => [x["Part Number"], x.Plant, toNumber(x["Reorder Point"]), toNumber(x["Safety Stock"])]));
+  plants.map((x) => [cleanText(x["Part Number"]), cleanText(x.Plant), normalizeInt(x["Reorder Point"]), normalizeInt(x["Safety Stock"])]));
 
-  await upsert(`INSERT INTO material_movement(material,plant,materialDescription,postingDate,movementType,orderNo,purchaseOrder,quantity,baseUnitOfMeasure,amtInLocCur,userName)
+  const skipped: Row[] = [];
+  const allowedRows = movements.filter((x) => {
+    const movementType = cleanText(x["Movement type"]);
+    const ok = isAllowedMovementType(movementType);
+    if (!ok) skipped.push(x);
+    return ok;
+  });
+  await upsert(`INSERT INTO material_movement(partNumber,plant,materialDescription,postingDate,movementType,orderNo,purchaseOrder,quantity,baseUnitOfMeasure,amtInLocCur,userName)
     VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
-    movements.map((x) => [x.Material, x.Plant, x["Material Description"], toDate(x["Posting Date"]), x["Movement type"], x.Order || null, x["Purchase order"] || null, toNumber(x.Quantity), x["Base Unit of Measure"], toNumber(x["Amt.in Loc.Cur."]), x["User Name"]]));
+  allowedRows.map((x) => [cleanText(x["Part Number"] ?? x.Material), cleanText(x.Plant), cleanText(x["Material Description"]), normalizeDate(x["Posting Date"]), cleanText(x["Movement type"]), cleanText(x.Order), cleanText(x["Purchase order"]), normalizeDecimal(x.Quantity), cleanText(x["Base Unit of Measure"]), normalizeDecimal(x["Amt.in Loc.Cur."]), cleanText(x["User Name"])]));
 
+  if (skipped.length > 0) console.log(`Skipped ${skipped.length} movement rows due to invalid movementType.`);
   console.log(`Import selesai dari ${file}`);
-  process.exit(0);
 }
 
-run().catch((err) => {
+run().then(() => process.exit(0)).catch((err) => {
   console.error(err);
   process.exit(1);
 });
