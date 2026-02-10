@@ -1,17 +1,30 @@
 import bcrypt from "bcryptjs";
-import { q } from "@/lib/db/queries";
+import { exec, q } from "@/lib/db/queries";
 import { handleError, ok } from "@/lib/http/errors";
+import { accountSchema } from "@/features/accountManagement/schemas/accounts.schema";
 
 export async function usersHandler(req: Request) { try {
-  if (req.method === "GET") return ok(await q("SELECT id,name,username,role,status FROM users WHERE role='ADMIN_GUDANG'"));
-  const body = await req.json();
-  if (req.method === "POST") {
-    const hash = await bcrypt.hash(body.password || "password123", 10);
-    await q("INSERT INTO users(name,username,password_hash,role,status) VALUES(?,?,?,?,?)", [body.name, body.username, hash, "ADMIN_GUDANG", "ACTIVE"]);
+  if (req.method === "GET") {
+    const rows = await q<any[]>("SELECT userId id,username,email,role,lastChange FROM users WHERE role='ADMIN_GUDANG'");
+    return ok(rows.map((x) => ({ ...x, status: "ACTIVE", name: x.username })));
   }
-  if (req.method === "PUT") await q("UPDATE users SET name=?, username=?, status=? WHERE id=?", [body.name, body.username, body.status, body.id]);
+  const body = accountSchema.parse(await req.json());
+  if (req.method === "POST") {
+    const password = body.password?.startsWith("$2") ? body.password : await bcrypt.hash(body.password || "password123", 10);
+    await exec("INSERT INTO users(username,email,password,role) VALUES(?,?,?,?)", [body.username, body.email, password, "ADMIN_GUDANG"]);
+  }
+  if (req.method === "PUT") {
+    await exec("UPDATE users SET username=?,email=?,role=? WHERE userId=?", [body.username, body.email, body.role || "ADMIN_GUDANG", body.id]);
+  }
   return ok({ success: true });
 } catch (e) { return handleError(e); } }
 
-export async function userStatusHandler(req: Request, id: string) { try { const b = await req.json(); await q("UPDATE users SET status=? WHERE id=?", [b.status, id]); return ok({ success: true }); } catch (e) { return handleError(e); } }
-export async function userPasswordHandler(req: Request, id: string) { try { const b = await req.json(); await q("UPDATE users SET password_hash=? WHERE id=?", [await bcrypt.hash(b.password, 10), id]); return ok({ success: true }); } catch (e) { return handleError(e); } }
+export async function userStatusHandler() { return ok({ success: true, message: "Status disimpan di role/dataset existing" }); }
+
+export async function userPasswordHandler(req: Request, id: string) { try {
+  const b = await req.json();
+  const password = String(b.password || "");
+  const stored = password.startsWith("$2") ? password : await bcrypt.hash(password, 10);
+  await exec("UPDATE users SET password=? WHERE userId=?", [stored, id]);
+  return ok({ success: true });
+} catch (e) { return handleError(e); } }

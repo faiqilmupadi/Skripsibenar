@@ -1,12 +1,26 @@
+import type { PoolConnection, ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import { pool } from "@/lib/db/mysql";
 
-export async function q<T>(sql: string, params: unknown[] = []) {
-  const [rows] = await pool.query(sql, params);
-  return rows as T;
+export async function q<T extends RowDataPacket[]>(sql: string, params: unknown[] = []) {
+  const [rows] = await pool.query<T>(sql, params);
+  return rows;
 }
 
-export const sql = {
-  users: "SELECT id,name,username,role,status,created_at FROM users",
-  items: "SELECT i.*,s.free_stock,s.blocked_stock FROM items i LEFT JOIN stock s ON s.item_id=i.id",
-  history: "SELECT m.*,u.name user_name,i.name item_name FROM movements m JOIN users u ON u.id=m.user_id JOIN items i ON i.id=m.item_id"
-};
+export async function exec(sql: string, params: unknown[] = []) {
+  const [res] = await pool.execute<ResultSetHeader>(sql, params);
+  return res;
+}
+
+export async function qTx<T extends RowDataPacket[]>(
+  conn: PoolConnection,
+  sql: string,
+  params: unknown[] = []
+) {
+  const [rows] = await conn.query<T>(sql, params);
+  return rows;
+}
+
+export async function execTx(conn: PoolConnection, sql: string, params: unknown[] = []) {
+  const [res] = await conn.execute<ResultSetHeader>(sql, params);
+  return res;
+}
