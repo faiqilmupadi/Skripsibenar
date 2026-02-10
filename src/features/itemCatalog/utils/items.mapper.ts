@@ -1,12 +1,14 @@
+import { formatDecimal } from "@/lib/utils/number";
+
 export type ItemDbRow = {
   code: string;
   name: string;
   unit: string;
   plant: string;
-  rop: number;
+  reorderPoint: number;
   safetyStock: number;
-  free_stock: number;
-  blocked_stock: number;
+  freeStock: number;
+  blocked: number;
 };
 
 export function mapItemRow(row: ItemDbRow) {
@@ -16,9 +18,10 @@ export function mapItemRow(row: ItemDbRow) {
     name: row.name,
     unit: row.unit,
     plant: row.plant,
-    rop: Number(row.rop),
+    rop: Number(row.reorderPoint),
     safetyStock: Number(row.safetyStock || 0),
-    freeStock: Number(row.free_stock || 0),
-    blockedStock: Number(row.blocked_stock || 0)
+    freeStock: Number(row.freeStock || 0),
+    blockedStock: Number(row.blocked || 0),
+    freeStockLabel: formatDecimal(row.freeStock || 0)
   };
 }
