@@ -1,12 +1,13 @@
 import path from "node:path";
 import XLSX from "xlsx";
 import { pool } from "../src/lib/db/mysql";
-import { isAllowedMovementType } from "../src/features/stockBarang/utils/movement.constants";
+import { ALLOWED_MOVEMENT_TYPES, isAllowedMovementType } from "../src/lib/db/movement";
 
 type Row = Record<string, unknown>;
 const file = process.argv[2] || path.join(process.cwd(), "dataset.xlsx");
 const toDecimal = (x: unknown) => (x == null || x === "" ? "0.000" : Number(x).toFixed(3));
 const toDate = (x: unknown) => (x ? new Date(String(x)) : null);
+const toTime = (x: unknown) => (x ? String(x).slice(0, 8) : null);
 
 async function upsert(sql: string, values: unknown[][]) { for (const row of values) await pool.execute(sql, row); }
 
@@ -37,10 +38,15 @@ async function run() {
     ON DUPLICATE KEY UPDATE reorderPoint=VALUES(reorderPoint),safetyStock=VALUES(safetyStock)`,
     plants.map((x) => [getValue(x, "partNumber", "Part Number"), getValue(x, "plant", "Plant"), toDecimal(getValue(x, "reorderPoint", "Reorder Point")), toDecimal(getValue(x, "safetyStock", "Safety Stock"))]));
 
-  await upsert(`INSERT INTO material_movement(material,plant,materialDescription,postingDate,movementType,orderNo,purchaseOrder,quantity,baseUnitOfMeasure,amtInLocCur,userName) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
-    movements.map((x) => [getValue(x, "material", "Material"), getValue(x, "plant", "Plant"), getValue(x, "materialDescription", "Material Description"), toDate(getValue(x, "postingDate", "Posting Date")), getValue(x, "movementType", "Movement type"), getValue(x, "orderNo", "Order") || null, getValue(x, "purchaseOrder", "Purchase order") || null, toDecimal(getValue(x, "quantity", "Quantity")), getValue(x, "baseUnitOfMeasure", "Base Unit of Measure"), Number(getValue(x, "amtInLocCur", "Amt.in Loc.Cur.") || 0), getValue(x, "userName", "User Name") ]));
+  await upsert(`INSERT INTO material_movement(partNumber,plant,materialDescription,postingDate,movementType,orderNo,purchaseOrder,quantity,baseUnitOfMeasure,amtInLocCur,userName)
+    VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
+    movements.map((x) => [x["Part Number"], x.Plant, x["Material Description"], toDate(x["Posting Date"]), x["Movement type"], x.Order || null, x["Purchase order"] || null, toNumber(x.Quantity), x["Base Unit of Measure"], toNumber(x["Amt.in Loc.Cur."]), x["User Name"]]));
 
+  if (skipped.length > 0) console.log(`Skipped ${skipped.length} movement rows due to invalid movementType.`);
   console.log(`Import selesai dari ${file}`);
 }
 
-run().then(() => process.exit(0)).catch((err) => { console.error(err); process.exit(1); });
+run().then(() => process.exit(0)).catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

@@ -1,42 +1,43 @@
 # Sistem Tampilan Pergudangan (Web)
 
-Aplikasi Next.js App Router + MySQL (`mysql2/promise`) untuk Kepala Gudang dan Admin Gudang.
+Aplikasi Next.js App Router + React + TypeScript + MySQL (`mysql2/promise`) tanpa Docker.
 
-## Setup Lokal (tanpa Docker)
-1. `npm install`
-2. Isi `.env.local`:
+## Setup Lokal
+1. Install dependency:
+   - `npm install`
+2. Buat file `.env.local`:
    - `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `JWT_SECRET`
-3. Buat database MySQL kosong.
-4. Jalankan schema utama: `npm run db:migrate`
-5. Jika DB lama sudah ada, jalankan alter alignment:
-   - `mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p$DB_PASSWORD $DB_NAME < scripts/migration_20260210_align_dataset.sql`
-6. Import Excel idempotent: `npm run db:import -- ./dataset.xlsx`
-7. Jalankan aplikasi: `npm run dev`
+3. Buat database MySQL kosong, lalu buat struktur tabel:
+   - `npm run db:migrate`
+4. Jika database lama masih pakai kolom `material`/`movementId`, jalankan migration alignment:
+   - `mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p$DB_PASSWORD $DB_NAME < scripts/migrations/001_align_dataset.sql`
+5. Import Excel real dataset:
+   - `npm run db:import -- ./dataset.xlsx`
+5. Jalankan aplikasi:
+   - `npm run dev`
 
-## Tabel dataset (wajib, tanpa tabel tambahan)
+## Tabel Wajib (5 tabel)
 - `users`
 - `material_master`
 - `material_stock`
 - `material_plant_data`
 - `material_movement`
 
-## Aturan data penting
-- Kolom DB camelCase.
-- `movementType` hanya boleh: `101`, `261`, `Z48`.
-- Import Excel akan skip row movement selain tiga nilai itu.
-- Kolom desimal presisi 3 digit:
-  - `material_stock.freeStock`, `material_stock.blocked`
-  - `material_plant_data.reorderPoint`, `material_plant_data.safetyStock`
-- UI menggunakan mapper layer, tidak memakai raw DB column langsung.
+## Mapping Dataset ke Kolom MySQL (camelCase)
+- `users`: `userId`, `username`, `email`, `password`, `role`, `createdOn`, `lastChange`
+- `material_master`: `partNumber`, `materialDescription`, `baseUnitOfMeasure`, `createdOn`, `createTime`, `createdBy`, `materialGroup`
+- `material_stock`: `partNumber`, `freeStock`, `plant`, `blocked`
+- `material_plant_data`: `partNumber`, `plant`, `reorderPoint`, `safetyStock`
+- `material_movement`: `partNumber`, `plant`, `materialDescription`, `postingDate`, `movementType`, `orderNo`, `purchaseOrder`, `quantity`, `baseUnitOfMeasure`, `amtInLocCur`, `userName`
 
-## Arsitektur
-- DB pool: `src/lib/db/mysql.ts`
-- Query layer: `src/lib/db/queries.ts`
-- Route tipis: `src/app/api/**/route.ts`
-- Handler bisnis: `src/features/**/api/*.server.ts`
-- Validation schema: `src/features/**/schemas/*.ts`
+## Arsitektur Inti
+- Pool MySQL: `src/lib/db/mysql.ts`
+- Query helper ter-parameter: `src/lib/db/queries.ts`
+- API route tipis: `src/app/api/**/route.ts`
+- Handler server: `src/features/**/api/**/*.server.ts`
+- UI mapper: `src/features/**/utils/*.mapper.ts`
 
-## Catatan login password
-Login mendukung dua format pada `users.password`:
-- Hash bcrypt (`$2...`) -> `bcrypt.compare`
-- Plain text -> dibandingkan langsung
+## Catatan Login Password
+`users.password` mendukung dua format:
+- bcrypt hash (`$2...`) -> `bcrypt.compare`
+- plaintext -> dibandingkan langsung
