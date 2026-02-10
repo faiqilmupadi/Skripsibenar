@@ -1,0 +1,28 @@
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: warehouse_db
+    ports:
+      - '3306:3306'
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  app:
+    image: node:20
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: sh -c "npm install && npm run prisma:generate && npm run dev"
+    ports:
+      - '3000:3000'
+    environment:
+      DATABASE_URL: mysql://root:root@mysql:3306/warehouse_db
+      JWT_SECRET: supersecretdev
+      APP_URL: http://localhost:3000
+    depends_on:
+      - mysql
+
+volumes:
+  mysql_data:
