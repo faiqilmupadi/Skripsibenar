@@ -1,1 +1,1 @@
-export const MOVEMENT_TYPES = ["ORDER", "QC", "OUTBOUND", "RETURN"];
+export const MOVEMENT_TYPES = ["101", "261", "Z48"];

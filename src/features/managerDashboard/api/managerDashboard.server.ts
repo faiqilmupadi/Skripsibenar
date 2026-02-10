@@ -1,17 +1,20 @@
 import { q } from "@/lib/db/queries";
 import { handleError, ok } from "@/lib/http/errors";
 
-const OUTBOUND_TYPES = ["OUTBOUND", "GI", "201", "261"];
+const OUTBOUND_TYPES = ["261", "Z48"];
 
-export async function adminPerformanceHandler(req: Request) { try {
-  const { searchParams } = new URL(req.url);
-  const from = searchParams.get("from") || "1970-01-01";
-  const to = searchParams.get("to") || "2999-12-31";
-  const list = await q<any[]>(`SELECT userName name,COUNT(*) total FROM material_movement
-    WHERE postingDate BETWEEN ? AND ? GROUP BY userName`, [from, to]);
-  const sum = list.reduce((a, b) => a + Number(b.total), 0) || 1;
-  return ok(list.map((x) => ({ ...x, percent: (Number(x.total) / sum) * 100 })));
-} catch (e) { return handleError(e); } }
+export async function adminPerformanceHandler(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const from = searchParams.get("from") || "1970-01-01";
+    const to = searchParams.get("to") || "2999-12-31";
+    const list = await q<any[]>("SELECT userName name,COUNT(*) total FROM material_movement WHERE postingDate BETWEEN ? AND ? GROUP BY userName", [from, to]);
+    const sum = list.reduce((a, b) => a + Number(b.total), 0) || 1;
+    return ok(list.map((x) => ({ ...x, percent: (Number(x.total) / sum) * 100 })));
+  } catch (e) {
+    return handleError(e);
+  }
+}
 
 export async function itemFsnHandler() { try {
   const marks = OUTBOUND_TYPES.map(() => "?").join(",");

@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 import { q } from "@/lib/db/queries";
+import { ALLOWED_MOVEMENT_TYPES } from "@/lib/db/movement";
 import { handleError, ok } from "@/lib/http/errors";
 
 function where(req: Request) {

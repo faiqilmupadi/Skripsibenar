@@ -13,7 +13,7 @@ Aplikasi Next.js App Router + React + TypeScript + MySQL (`mysql2/promise`) tanp
    - `mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p$DB_PASSWORD $DB_NAME < scripts/migrations/001_align_dataset.sql`
 5. Import Excel real dataset:
    - `npm run db:import -- ./dataset.xlsx`
-6. Jalankan aplikasi:
+5. Jalankan aplikasi:
    - `npm run dev`
 
 ## Tabel Wajib (5 tabel)

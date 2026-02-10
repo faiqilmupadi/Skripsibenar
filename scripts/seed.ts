@@ -1,6 +1,7 @@
 import path from "node:path";
 import XLSX from "xlsx";
 import { pool } from "../src/lib/db/mysql";
+import { ALLOWED_MOVEMENT_TYPES, isAllowedMovementType } from "../src/lib/db/movement";
 
 type Row = Record<string, unknown>;
 const file = process.argv[2] || path.join(process.cwd(), "dataset.xlsx");
@@ -21,6 +22,7 @@ async function run() {
   const stocks = XLSX.utils.sheet_to_json<Row>(wb.Sheets[stockS]);
   const plants = XLSX.utils.sheet_to_json<Row>(wb.Sheets[plantS]);
   const movements = XLSX.utils.sheet_to_json<Row>(wb.Sheets[movS]);
+  console.log(`Allowed movementType: ${ALLOWED_MOVEMENT_TYPES.join(",")}`);
 
   await upsert(`INSERT INTO users(userId,username,email,password,role,createdOn,lastChange)
     VALUES(?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE username=VALUES(username),email=VALUES(email),password=VALUES(password),role=VALUES(role),lastChange=VALUES(lastChange)`,
@@ -42,11 +44,11 @@ async function run() {
     VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
     movements.map((x) => [x["Part Number"], x.Plant, x["Material Description"], toDate(x["Posting Date"]), x["Movement type"], x.Order || null, x["Purchase order"] || null, toNumber(x.Quantity), x["Base Unit of Measure"], toNumber(x["Amt.in Loc.Cur."]), x["User Name"]]));
 
+  if (skipped.length > 0) console.log(`Skipped ${skipped.length} movement rows due to invalid movementType.`);
   console.log(`Import selesai dari ${file}`);
-  process.exit(0);
 }
 
-run().catch((err) => {
+run().then(() => process.exit(0)).catch((err) => {
   console.error(err);
   process.exit(1);
 });
