@@ -1,2 +1,7 @@
 import { fetcher } from "@/lib/http/fetcher";
-export const historyClient = { list: () => fetcher<any[]>("/api/history"), exportXlsx: () => window.open("/api/export/history.xlsx", "_blank") };
+import { mapHistoryRow } from "@/features/purchaseHistory/utils/history.mapper";
+
+export const historyClient = {
+  list: async () => (await fetcher<any[]>("/api/history")).map(mapHistoryRow),
+  exportXlsx: () => window.open("/api/export/history.xlsx", "_blank")
+};

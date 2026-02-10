@@ -1,11 +1,26 @@
-import { q } from "@/lib/db/queries";
+import { exec, q } from "@/lib/db/queries";
 import { handleError, ok } from "@/lib/http/errors";
+import { itemSchema } from "@/features/itemCatalog/schemas/items.schema";
+
+const listSql = `SELECT mm.partNumber code,mm.materialDescription name,mm.baseUnitOfMeasure unit,
+  ms.plant,ms.freeStock free_stock,ms.blocked blocked_stock,pd.reorderPoint rop,pd.safetyStock
+  FROM material_master mm
+  LEFT JOIN material_stock ms ON ms.partNumber=mm.partNumber
+  LEFT JOIN material_plant_data pd ON pd.partNumber=mm.partNumber AND pd.plant=ms.plant`;
 
 export async function itemsHandler(req: Request) { try {
-  if (req.method === "GET") return ok(await q("SELECT i.*,s.free_stock,s.blocked_stock FROM items i LEFT JOIN stock s ON s.item_id=i.id"));
-  const b = await req.json();
-  if (req.method === "POST") { await q("INSERT INTO items(code,name,unit,price,rop,is_active) VALUES(?,?,?,?,?,1)", [b.code, b.name, b.unit, b.price, b.rop]); await q("INSERT INTO stock(item_id,free_stock,blocked_stock) VALUES(LAST_INSERT_ID(),0,0)"); }
-  if (req.method === "PUT") await q("UPDATE items SET name=?,unit=?,price=?,rop=?,is_active=? WHERE id=?", [b.name, b.unit, b.price, b.rop, b.is_active, b.id]);
+  if (req.method === "GET") return ok(await q(listSql));
+  const b = itemSchema.parse(await req.json());
+  if (req.method === "POST") {
+    await exec("INSERT INTO material_master(partNumber,materialDescription,baseUnitOfMeasure,createdOn,createTime,createdBy,materialGroup) VALUES(?,?,?,?,?,?,?)", [b.code, b.name, b.unit, new Date(), new Date().toTimeString().slice(0, 8), b.createdBy || "system", b.materialGroup || null]);
+    await exec("INSERT INTO material_stock(partNumber,plant,freeStock,blocked) VALUES(?,?,0,0)", [b.code, b.plant]);
+    await exec("INSERT INTO material_plant_data(partNumber,plant,reorderPoint,safetyStock) VALUES(?,?,?,?)", [b.code, b.plant, b.rop, b.safetyStock || 0]);
+  }
+  if (req.method === "PUT") {
+    await exec("UPDATE material_master SET materialDescription=?,baseUnitOfMeasure=?,materialGroup=? WHERE partNumber=?", [b.name, b.unit, b.materialGroup || null, b.code]);
+    await exec("UPDATE material_plant_data SET reorderPoint=?,safetyStock=? WHERE partNumber=? AND plant=?", [b.rop, b.safetyStock || 0, b.code, b.plant]);
+  }
   return ok({ success: true });
 } catch (e) { return handleError(e); } }
-export async function itemActiveHandler(req: Request, id: string) { try { const b = await req.json(); await q("UPDATE items SET is_active=? WHERE id=?", [b.is_active, id]); return ok({ success: true }); } catch (e) { return handleError(e); } }
+
+export async function itemActiveHandler() { return ok({ success: true }); }

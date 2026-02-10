@@ -1,18 +1,34 @@
 import { q } from "@/lib/db/queries";
 import { handleError, ok } from "@/lib/http/errors";
 
+const OUTBOUND_TYPES = ["OUTBOUND", "GI", "201", "261"];
+
 export async function adminPerformanceHandler(req: Request) { try {
-  const list = await q<any[]>("SELECT u.name,COUNT(m.id) total FROM users u LEFT JOIN movements m ON m.user_id=u.id GROUP BY u.id");
-  const sum = list.reduce((a, b) => a + b.total, 0) || 1;
-  return ok(list.map((x) => ({ ...x, percent: (x.total / sum) * 100 })));
+  const { searchParams } = new URL(req.url);
+  const from = searchParams.get("from") || "1970-01-01";
+  const to = searchParams.get("to") || "2999-12-31";
+  const list = await q<any[]>(`SELECT userName name,COUNT(*) total FROM material_movement
+    WHERE postingDate BETWEEN ? AND ? GROUP BY userName`, [from, to]);
+  const sum = list.reduce((a, b) => a + Number(b.total), 0) || 1;
+  return ok(list.map((x) => ({ ...x, percent: (Number(x.total) / sum) * 100 })));
 } catch (e) { return handleError(e); } }
 
 export async function itemFsnHandler() { try {
-  const list = await q<any[]>("SELECT i.name,s.free_stock,COALESCE(SUM(CASE WHEN m.type='OUTBOUND' THEN ABS(m.qty_free_delta) END),0) keluar FROM items i JOIN stock s ON s.item_id=i.id LEFT JOIN movements m ON m.item_id=i.id GROUP BY i.id ORDER BY keluar DESC LIMIT 10");
-  return ok(list.map((x) => ({ name: x.name, ratio: x.keluar ? x.free_stock / x.keluar : 999, status: x.keluar === 0 ? "NON" : x.free_stock / x.keluar < 1 ? "FAST" : "SLOW", percent: x.keluar })));
+  const marks = OUTBOUND_TYPES.map(() => "?").join(",");
+  const list = await q<any[]>(`SELECT mm.materialDescription name,ms.freeStock,
+    COALESCE(SUM(CASE WHEN mv.movementType IN (${marks}) THEN ABS(mv.quantity) ELSE 0 END),0) keluar
+    FROM material_master mm JOIN material_stock ms ON ms.partNumber=mm.partNumber
+    LEFT JOIN material_movement mv ON mv.material=mm.partNumber AND mv.plant=ms.plant
+    GROUP BY mm.partNumber,ms.plant ORDER BY keluar DESC LIMIT 10`, OUTBOUND_TYPES);
+  return ok(list.map((x) => ({ name: x.name, ratio: x.keluar ? x.freeStock / x.keluar : 999, status: x.keluar === 0 ? "NON" : x.freeStock / x.keluar < 1 ? "FAST" : "SLOW", percent: x.keluar })));
 } catch (e) { return handleError(e); } }
 
 export async function assetTrendHandler() { try {
-  const now = await q<any[]>("SELECT SUM(s.free_stock*i.price) value,SUM(s.free_stock) freeUnits,SUM(s.blocked_stock) blockedUnits FROM stock s JOIN items i ON i.id=s.item_id");
-  return ok({ trend: [{ date: new Date().toISOString().slice(0, 10), value: now[0].value || 0 }], ...now[0] });
+  const rows = await q<any[]>(`SELECT d.postingDate date,
+    SUM(ms.freeStock * COALESCE((SELECT AVG(ABS(m2.amtInLocCur)/NULLIF(ABS(m2.quantity),0))
+      FROM material_movement m2 WHERE m2.material=ms.partNumber AND m2.quantity<>0),0)) value
+    FROM material_stock ms CROSS JOIN (SELECT DISTINCT postingDate FROM material_movement) d
+    LEFT JOIN material_movement m ON m.postingDate=d.postingDate GROUP BY d.postingDate ORDER BY d.postingDate`);
+  const totals = await q<any[]>("SELECT SUM(freeStock) freeUnits,SUM(blocked) blockedUnits FROM material_stock");
+  return ok({ trend: rows, value: rows.at(-1)?.value || 0, ...totals[0] });
 } catch (e) { return handleError(e); } }

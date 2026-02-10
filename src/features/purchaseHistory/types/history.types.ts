@@ -1,1 +1,9 @@
-export type HistoryRow = { id: number; item_name: string; user_name: string; type: string; created_at: string };
+export type HistoryRow = {
+  id: number;
+  itemName: string;
+  userName: string;
+  type: string;
+  createdAt: string;
+};
+
+export const formatType = (x: string) => x;

@@ -1,18 +1,51 @@
-import bcrypt from "bcryptjs";
-import { pool } from "@/lib/db/mysql";
+import path from "node:path";
+import XLSX from "xlsx";
+import { pool } from "../src/lib/db/mysql";
+
+type Row = Record<string, unknown>;
+const file = process.argv[2] || path.join(process.cwd(), "dataset.xlsx");
+
+const toNumber = (x: unknown) => (x == null || x === "" ? 0 : Number(x));
+const toDate = (x: unknown) => (x ? new Date(String(x)) : null);
+
+async function upsert(sql: string, values: unknown[][]) {
+  for (const row of values) await pool.execute(sql, row);
+}
 
 async function run() {
-  const hash = await bcrypt.hash("password123", 10);
-  await pool.query("DELETE FROM movements; DELETE FROM order_items; DELETE FROM orders; DELETE FROM stock; DELETE FROM items; DELETE FROM users;");
-  await pool.query("INSERT INTO users(name,username,password_hash,role,status) VALUES (?,?,?,?,?),(?,?,?,?,?),(?,?,?,?,?)", [
-    "Kepala Gudang", "kepala", hash, "KEPALA_GUDANG", "ACTIVE",
-    "Admin A", "admin1", hash, "ADMIN_GUDANG", "ACTIVE",
-    "Admin B", "admin2", hash, "ADMIN_GUDANG", "ACTIVE"
-  ]);
-  await pool.query("INSERT INTO items(code,name,unit,price,rop,is_active) VALUES ('BRG-001','Oli Mesin','botol',50000,10,1),('BRG-002','Kampas Rem','pcs',120000,8,1),('BRG-003','Busi','pcs',25000,12,1)");
-  await pool.query("INSERT INTO stock(item_id,free_stock,blocked_stock) VALUES (1,40,2),(2,7,1),(3,20,0)");
-  await pool.query("INSERT INTO movements(item_id,user_id,type,qty_free_delta,qty_blocked_delta,note,customer_name) VALUES (1,2,'OUTBOUND',-5,0,'Service','Andi'),(2,3,'QC',2,1,'QC awal',NULL),(3,2,'RETURN',0,-1,'Retur vendor',NULL)");
-  console.log("Seed selesai. akun: kepala/admin1/admin2 password: password123");
+  const wb = XLSX.readFile(file);
+  const [usersS, masterS, stockS, plantS, movS] = wb.SheetNames;
+  const users = XLSX.utils.sheet_to_json<Row>(wb.Sheets[usersS]);
+  const masters = XLSX.utils.sheet_to_json<Row>(wb.Sheets[masterS]);
+  const stocks = XLSX.utils.sheet_to_json<Row>(wb.Sheets[stockS]);
+  const plants = XLSX.utils.sheet_to_json<Row>(wb.Sheets[plantS]);
+  const movements = XLSX.utils.sheet_to_json<Row>(wb.Sheets[movS]);
+
+  await upsert(`INSERT INTO users(userId,username,email,password,role,createdOn,lastChange)
+    VALUES(?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE username=VALUES(username),email=VALUES(email),password=VALUES(password),role=VALUES(role),lastChange=VALUES(lastChange)`,
+    users.map((x) => [x.user_id, x.username, x.email, x.password, x.role, toDate(x.created_on), toDate(x["Last Change"])]));
+
+  await upsert(`INSERT INTO material_master(partNumber,materialDescription,baseUnitOfMeasure,createdOn,createTime,createdBy,materialGroup)
+    VALUES(?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE materialDescription=VALUES(materialDescription),baseUnitOfMeasure=VALUES(baseUnitOfMeasure),createdBy=VALUES(createdBy),materialGroup=VALUES(materialGroup)`,
+    masters.map((x) => [x["Part Number"], x["Material description"], x["Base Unit of Measure"], toDate(x["Created On"]), x["Create Time"] || null, x["Created By"], x["Material Group"]]));
+
+  await upsert(`INSERT INTO material_stock(partNumber,plant,freeStock,blocked)
+    VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE freeStock=VALUES(freeStock),blocked=VALUES(blocked)`,
+    stocks.map((x) => [x["part number"], x["Plant"], toNumber(x["Free Stock"]), toNumber(x.Blocked)]));
+
+  await upsert(`INSERT INTO material_plant_data(partNumber,plant,reorderPoint,safetyStock)
+    VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE reorderPoint=VALUES(reorderPoint),safetyStock=VALUES(safetyStock)`,
+    plants.map((x) => [x["Part Number"], x.Plant, toNumber(x["Reorder Point"]), toNumber(x["Safety Stock"])]));
+
+  await upsert(`INSERT INTO material_movement(material,plant,materialDescription,postingDate,movementType,orderNo,purchaseOrder,quantity,baseUnitOfMeasure,amtInLocCur,userName)
+    VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
+    movements.map((x) => [x.Material, x.Plant, x["Material Description"], toDate(x["Posting Date"]), x["Movement type"], x.Order || null, x["Purchase order"] || null, toNumber(x.Quantity), x["Base Unit of Measure"], toNumber(x["Amt.in Loc.Cur."]), x["User Name"]]));
+
+  console.log(`Import selesai dari ${file}`);
   process.exit(0);
 }
-run();
+
+run().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

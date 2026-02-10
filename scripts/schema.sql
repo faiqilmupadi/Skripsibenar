@@ -1,65 +1,54 @@
 CREATE TABLE IF NOT EXISTS users (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(120) NOT NULL,
+  userId INT PRIMARY KEY AUTO_INCREMENT,
   username VARCHAR(60) NOT NULL UNIQUE,
-  password_hash VARCHAR(255) NOT NULL,
+  email VARCHAR(120) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
   role ENUM('KEPALA_GUDANG','ADMIN_GUDANG') NOT NULL,
-  status ENUM('ACTIVE','INACTIVE') DEFAULT 'ACTIVE',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  createdOn DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  lastChange DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
-CREATE TABLE IF NOT EXISTS items (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  code VARCHAR(40) NOT NULL UNIQUE,
-  name VARCHAR(120) NOT NULL,
-  unit VARCHAR(30) NOT NULL,
-  price DECIMAL(14,2) NOT NULL,
-  rop INT NOT NULL,
-  is_active BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+CREATE TABLE IF NOT EXISTS material_master (
+  partNumber VARCHAR(40) PRIMARY KEY,
+  materialDescription VARCHAR(255) NOT NULL,
+  baseUnitOfMeasure VARCHAR(20) NOT NULL,
+  createdOn DATE NULL,
+  createTime TIME NULL,
+  createdBy VARCHAR(80) NULL,
+  materialGroup VARCHAR(80) NULL
 );
-CREATE TABLE IF NOT EXISTS stock (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  item_id INT NOT NULL UNIQUE,
-  free_stock INT DEFAULT 0,
-  blocked_stock INT DEFAULT 0,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (item_id) REFERENCES items(id)
+
+CREATE TABLE IF NOT EXISTS material_stock (
+  partNumber VARCHAR(40) NOT NULL,
+  plant VARCHAR(20) NOT NULL,
+  freeStock DECIMAL(16,3) NOT NULL DEFAULT 0,
+  blocked DECIMAL(16,3) NOT NULL DEFAULT 0,
+  PRIMARY KEY (partNumber, plant),
+  CONSTRAINT fk_stock_master FOREIGN KEY (partNumber) REFERENCES material_master(partNumber)
 );
-CREATE TABLE IF NOT EXISTS orders (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  created_by INT NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (created_by) REFERENCES users(id)
+
+CREATE TABLE IF NOT EXISTS material_plant_data (
+  partNumber VARCHAR(40) NOT NULL,
+  plant VARCHAR(20) NOT NULL,
+  reorderPoint DECIMAL(16,3) NOT NULL DEFAULT 0,
+  safetyStock DECIMAL(16,3) NOT NULL DEFAULT 0,
+  PRIMARY KEY (partNumber, plant),
+  CONSTRAINT fk_plant_master FOREIGN KEY (partNumber) REFERENCES material_master(partNumber)
 );
-CREATE TABLE IF NOT EXISTS order_items (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  order_id INT NOT NULL,
-  item_id INT NOT NULL,
-  qty_ordered INT NOT NULL,
-  qty_good INT DEFAULT 0,
-  qty_bad INT DEFAULT 0,
-  FOREIGN KEY (order_id) REFERENCES orders(id),
-  FOREIGN KEY (item_id) REFERENCES items(id)
-);
-CREATE TABLE IF NOT EXISTS movements (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  item_id INT NOT NULL,
-  user_id INT NOT NULL,
-  type ENUM('ORDER','QC','OUTBOUND','RETURN') NOT NULL,
-  qty_free_delta INT DEFAULT 0,
-  qty_blocked_delta INT DEFAULT 0,
-  note TEXT,
-  customer_name VARCHAR(120),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (item_id) REFERENCES items(id),
-  FOREIGN KEY (user_id) REFERENCES users(id)
-);
-CREATE TABLE IF NOT EXISTS rop_dismissals (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  item_id INT NOT NULL,
-  user_id INT NOT NULL,
-  dismissed_until_date DATE NOT NULL,
-  UNIQUE KEY uniq_rop_dismissal (item_id, user_id, dismissed_until_date)
+
+CREATE TABLE IF NOT EXISTS material_movement (
+  movementId BIGINT PRIMARY KEY AUTO_INCREMENT,
+  material VARCHAR(40) NOT NULL,
+  plant VARCHAR(20) NOT NULL,
+  materialDescription VARCHAR(255) NOT NULL,
+  postingDate DATE NOT NULL,
+  movementType VARCHAR(30) NOT NULL,
+  orderNo VARCHAR(120) NULL,
+  purchaseOrder VARCHAR(120) NULL,
+  quantity DECIMAL(16,3) NOT NULL DEFAULT 0,
+  baseUnitOfMeasure VARCHAR(20) NOT NULL,
+  amtInLocCur DECIMAL(18,2) NOT NULL DEFAULT 0,
+  userName VARCHAR(120) NOT NULL,
+  KEY idx_movement_material (material, plant, postingDate),
+  CONSTRAINT fk_movement_master FOREIGN KEY (material) REFERENCES material_master(partNumber)
 );
