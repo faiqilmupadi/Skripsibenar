@@ -11,20 +11,23 @@ function where(req: Request) {
   return { sql: sql.join(" AND "), vals };
 }
 
-export async function historyHandler(req: Request) { try {
-  const f = where(req);
-  const rows = await q<any[]>(`SELECT movementId id,material item_name,userName user_name,movementType type,
-    postingDate created_at,orderNo note,plant,purchaseOrder,quantity,amtInLocCur FROM material_movement
-    WHERE ${f.sql} ORDER BY postingDate DESC,movementId DESC`, f.vals);
-  return ok(rows);
-} catch (e) { return handleError(e); } }
+export async function historyHandler(req: Request) {
+  try {
+    const f = where(req);
+    const rows = await q<any[]>(`SELECT movementId,material,userName,movementType,postingDate,orderNo,plant,purchaseOrder,quantity,amtInLocCur
+      FROM material_movement WHERE ${f.sql} ORDER BY postingDate DESC,movementId DESC`, f.vals);
+    return ok(rows);
+  } catch (e) { return handleError(e); }
+}
 
-export async function historyExportHandler(req: Request) { try {
-  const f = where(req);
-  const rows = await q<any[]>(`SELECT material,plant,materialDescription,postingDate,movementType,orderNo,purchaseOrder,
-    quantity,baseUnitOfMeasure,amtInLocCur,userName FROM material_movement WHERE ${f.sql}`, f.vals);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "history");
-  const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
-  return new Response(buf, { headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" } });
-} catch (e) { return handleError(e); } }
+export async function historyExportHandler(req: Request) {
+  try {
+    const f = where(req);
+    const rows = await q<any[]>(`SELECT material,plant,materialDescription,postingDate,movementType,orderNo,purchaseOrder,quantity,baseUnitOfMeasure,amtInLocCur,userName
+      FROM material_movement WHERE ${f.sql}`, f.vals);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "history");
+    const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+    return new Response(buf, { headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" } });
+  } catch (e) { return handleError(e); }
+}

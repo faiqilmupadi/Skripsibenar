@@ -1,0 +1,10 @@
+ALTER TABLE material_stock
+  MODIFY freeStock DECIMAL(10,3) NOT NULL DEFAULT 0,
+  MODIFY blocked DECIMAL(10,3) NOT NULL DEFAULT 0;
+
+ALTER TABLE material_plant_data
+  MODIFY reorderPoint DECIMAL(10,3) NOT NULL DEFAULT 0,
+  MODIFY safetyStock DECIMAL(10,3) NOT NULL DEFAULT 0;
+
+ALTER TABLE material_movement
+  MODIFY movementType ENUM('101','261','Z48') NOT NULL;

@@ -21,8 +21,8 @@ CREATE TABLE IF NOT EXISTS material_master (
 CREATE TABLE IF NOT EXISTS material_stock (
   partNumber VARCHAR(40) NOT NULL,
   plant VARCHAR(20) NOT NULL,
-  freeStock DECIMAL(16,3) NOT NULL DEFAULT 0,
-  blocked DECIMAL(16,3) NOT NULL DEFAULT 0,
+  freeStock DECIMAL(10,3) NOT NULL DEFAULT 0,
+  blocked DECIMAL(10,3) NOT NULL DEFAULT 0,
   PRIMARY KEY (partNumber, plant),
   CONSTRAINT fk_stock_master FOREIGN KEY (partNumber) REFERENCES material_master(partNumber)
 );
@@ -30,8 +30,8 @@ CREATE TABLE IF NOT EXISTS material_stock (
 CREATE TABLE IF NOT EXISTS material_plant_data (
   partNumber VARCHAR(40) NOT NULL,
   plant VARCHAR(20) NOT NULL,
-  reorderPoint DECIMAL(16,3) NOT NULL DEFAULT 0,
-  safetyStock DECIMAL(16,3) NOT NULL DEFAULT 0,
+  reorderPoint DECIMAL(10,3) NOT NULL DEFAULT 0,
+  safetyStock DECIMAL(10,3) NOT NULL DEFAULT 0,
   PRIMARY KEY (partNumber, plant),
   CONSTRAINT fk_plant_master FOREIGN KEY (partNumber) REFERENCES material_master(partNumber)
 );
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS material_movement (
   plant VARCHAR(20) NOT NULL,
   materialDescription VARCHAR(255) NOT NULL,
   postingDate DATE NOT NULL,
-  movementType VARCHAR(30) NOT NULL,
+  movementType ENUM('101','261','Z48') NOT NULL,
   orderNo VARCHAR(120) NULL,
   purchaseOrder VARCHAR(120) NULL,
   quantity DECIMAL(16,3) NOT NULL DEFAULT 0,

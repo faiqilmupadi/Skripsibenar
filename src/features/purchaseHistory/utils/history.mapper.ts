@@ -1,12 +1,13 @@
+export const formatType = (x: string) => ({ "101": "Order/QC Inbound", "261": "Withdraw Bengkel", Z48: "Claim Vendor" }[x] || x);
+
 export function mapHistoryRow(row: any) {
   return {
-    id: Number(row.id),
-    itemName: row.item_name,
-    userName: row.user_name,
-    type: row.type,
-    createdAt: row.created_at,
-    note: row.note
+    id: Number(row.movementId),
+    itemName: row.material,
+    userName: row.userName,
+    type: formatType(row.movementType),
+    movementType: row.movementType,
+    createdAt: row.postingDate,
+    note: row.orderNo
   };
 }
-
-export const formatType = (x: string) => x;

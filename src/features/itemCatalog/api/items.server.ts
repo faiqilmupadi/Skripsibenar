@@ -3,7 +3,7 @@ import { handleError, ok } from "@/lib/http/errors";
 import { itemSchema } from "@/features/itemCatalog/schemas/items.schema";
 
 const listSql = `SELECT mm.partNumber code,mm.materialDescription name,mm.baseUnitOfMeasure unit,
-  ms.plant,ms.freeStock free_stock,ms.blocked blocked_stock,pd.reorderPoint rop,pd.safetyStock
+  ms.plant,ms.freeStock,ms.blocked,pd.reorderPoint,pd.safetyStock
   FROM material_master mm
   LEFT JOIN material_stock ms ON ms.partNumber=mm.partNumber
   LEFT JOIN material_plant_data pd ON pd.partNumber=mm.partNumber AND pd.plant=ms.plant`;
