@@ -20,8 +20,8 @@ CREATE TABLE IF NOT EXISTS material_master (
 
 CREATE TABLE IF NOT EXISTS material_stock (
   partNumber VARCHAR(40) NOT NULL,
-  plant VARCHAR(20) NOT NULL,
   freeStock DECIMAL(16,3) NOT NULL DEFAULT 0,
+  plant VARCHAR(20) NOT NULL,
   blocked DECIMAL(16,3) NOT NULL DEFAULT 0,
   PRIMARY KEY (partNumber, plant),
   CONSTRAINT fk_stock_master FOREIGN KEY (partNumber) REFERENCES material_master(partNumber)
@@ -37,8 +37,7 @@ CREATE TABLE IF NOT EXISTS material_plant_data (
 );
 
 CREATE TABLE IF NOT EXISTS material_movement (
-  movementId BIGINT PRIMARY KEY AUTO_INCREMENT,
-  material VARCHAR(40) NOT NULL,
+  partNumber VARCHAR(40) NOT NULL,
   plant VARCHAR(20) NOT NULL,
   materialDescription VARCHAR(255) NOT NULL,
   postingDate DATE NOT NULL,
@@ -49,6 +48,9 @@ CREATE TABLE IF NOT EXISTS material_movement (
   baseUnitOfMeasure VARCHAR(20) NOT NULL,
   amtInLocCur DECIMAL(18,2) NOT NULL DEFAULT 0,
   userName VARCHAR(120) NOT NULL,
-  KEY idx_movement_material (material, plant, postingDate),
-  CONSTRAINT fk_movement_master FOREIGN KEY (material) REFERENCES material_master(partNumber)
+  KEY idx_movement_lookup (partNumber, plant, postingDate),
+  CONSTRAINT fk_movement_master FOREIGN KEY (partNumber)
+    REFERENCES material_master(partNumber)
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT
 );
