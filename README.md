@@ -1,43 +1,43 @@
 # Sistem Tampilan Pergudangan (Web)
 
-Aplikasi Next.js App Router + React + TypeScript + MySQL (`mysql2/promise`) untuk Kepala Gudang dan Admin Gudang.
+Aplikasi Next.js App Router + React + TypeScript + MySQL (`mysql2/promise`) tanpa Docker.
 
-## Setup Lokal (tanpa Docker)
-1. `npm install`
-2. Buat `.env.local`:
+## Setup Lokal
+1. Install dependency:
+   - `npm install`
+2. Buat file `.env.local`:
    - `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `JWT_SECRET`
-3. Buat database MySQL kosong, lalu jalankan schema exact:
+3. Buat database MySQL kosong, lalu buat struktur tabel:
    - `npm run db:migrate`
-4. Import data Excel real dataset:
+4. Jika database lama masih pakai kolom `material`/`movementId`, jalankan migration alignment:
+   - `mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p$DB_PASSWORD $DB_NAME < scripts/migrations/001_align_dataset.sql`
+5. Import Excel real dataset:
    - `npm run db:import -- ./dataset.xlsx`
 5. Jalankan aplikasi:
    - `npm run dev`
 
-## Exact schema (5 tabel wajib)
+## Tabel Wajib (5 tabel)
 - `users`
 - `material_master`
 - `material_stock`
 - `material_plant_data`
 - `material_movement`
 
-Schema SQL tersedia di:
-- `scripts/schema.sql`
-- `scripts/migrations/001_exact_schema.sql`
+## Mapping Dataset ke Kolom MySQL (camelCase)
+- `users`: `userId`, `username`, `email`, `password`, `role`, `createdOn`, `lastChange`
+- `material_master`: `partNumber`, `materialDescription`, `baseUnitOfMeasure`, `createdOn`, `createTime`, `createdBy`, `materialGroup`
+- `material_stock`: `partNumber`, `freeStock`, `plant`, `blocked`
+- `material_plant_data`: `partNumber`, `plant`, `reorderPoint`, `safetyStock`
+- `material_movement`: `partNumber`, `plant`, `materialDescription`, `postingDate`, `movementType`, `orderNo`, `purchaseOrder`, `quantity`, `baseUnitOfMeasure`, `amtInLocCur`, `userName`
 
-## Validasi import Excel
-Script `scripts/seed.ts` menerapkan aturan berikut:
-- `movementType` hanya boleh `{101,261,Z48}`. Nilai lain akan di-skip dan di-log.
-- Normalisasi integer untuk `freeStock`, `blocked`, `reorderPoint`, `safetyStock` dengan parse float lalu `Math.round` (`2.000 -> 2`).
-- Semua insert menggunakan nama kolom exact schema (`partNumber`, `freeStock`, dll).
+## Arsitektur Inti
+- Pool MySQL: `src/lib/db/mysql.ts`
+- Query helper ter-parameter: `src/lib/db/queries.ts`
+- API route tipis: `src/app/api/**/route.ts`
+- Handler server: `src/features/**/api/**/*.server.ts`
+- UI mapper: `src/features/**/utils/*.mapper.ts`
 
-## Arsitektur
-- DB pool: `src/lib/db/mysql.ts`
-- Query layer parameterized: `src/lib/db/queries.ts`
-- Thin routes: `src/app/api/**/route.ts`
-- Server handlers: `src/features/**/api/*.server.ts`
-- Zod schemas: `src/features/**/schemas/*.ts`
-
-## Catatan autentikasi
-Login kompatibel dengan dua format `users.password`:
+## Catatan Login Password
+`users.password` mendukung dua format:
 - bcrypt hash (`$2...`) -> `bcrypt.compare`
-- plain text -> direct compare
+- plaintext -> dibandingkan langsung
