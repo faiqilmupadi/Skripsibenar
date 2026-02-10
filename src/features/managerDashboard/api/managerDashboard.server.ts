@@ -18,7 +18,7 @@ export async function itemFsnHandler() { try {
   const list = await q<any[]>(`SELECT mm.materialDescription name,ms.freeStock,
     COALESCE(SUM(CASE WHEN mv.movementType IN (${marks}) THEN ABS(mv.quantity) ELSE 0 END),0) keluar
     FROM material_master mm JOIN material_stock ms ON ms.partNumber=mm.partNumber
-    LEFT JOIN material_movement mv ON mv.material=mm.partNumber AND mv.plant=ms.plant
+    LEFT JOIN material_movement mv ON mv.partNumber=mm.partNumber AND mv.plant=ms.plant
     GROUP BY mm.partNumber,ms.plant ORDER BY keluar DESC LIMIT 10`, OUTBOUND_TYPES);
   return ok(list.map((x) => ({ name: x.name, ratio: x.keluar ? x.freeStock / x.keluar : 999, status: x.keluar === 0 ? "NON" : x.freeStock / x.keluar < 1 ? "FAST" : "SLOW", percent: x.keluar })));
 } catch (e) { return handleError(e); } }
@@ -26,7 +26,7 @@ export async function itemFsnHandler() { try {
 export async function assetTrendHandler() { try {
   const rows = await q<any[]>(`SELECT d.postingDate date,
     SUM(ms.freeStock * COALESCE((SELECT AVG(ABS(m2.amtInLocCur)/NULLIF(ABS(m2.quantity),0))
-      FROM material_movement m2 WHERE m2.material=ms.partNumber AND m2.quantity<>0),0)) value
+      FROM material_movement m2 WHERE m2.partNumber=ms.partNumber AND m2.quantity<>0),0)) value
     FROM material_stock ms CROSS JOIN (SELECT DISTINCT postingDate FROM material_movement) d
     LEFT JOIN material_movement m ON m.postingDate=d.postingDate GROUP BY d.postingDate ORDER BY d.postingDate`);
   const totals = await q<any[]>("SELECT SUM(freeStock) freeUnits,SUM(blocked) blockedUnits FROM material_stock");

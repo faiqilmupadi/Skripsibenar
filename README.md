@@ -1,38 +1,43 @@
 # Sistem Tampilan Pergudangan (Web)
 
-Aplikasi Next.js App Router + MySQL (`mysql2/promise`) untuk Kepala Gudang dan Admin Gudang.
+Aplikasi Next.js App Router + React + TypeScript + MySQL (`mysql2/promise`) tanpa Docker.
 
-## Setup Lokal (tanpa Docker)
-1. `npm install`
-2. Isi env berikut di `.env.local`:
+## Setup Lokal
+1. Install dependency:
+   - `npm install`
+2. Buat file `.env.local`:
    - `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `JWT_SECRET`
-3. Buat database MySQL kosong.
-4. Jalankan migrasi 5 tabel real dataset:
+3. Buat database MySQL kosong, lalu buat struktur tabel:
    - `npm run db:migrate`
-5. Import dataset excel (idempotent):
+4. Jika database lama masih pakai kolom `material`/`movementId`, jalankan migration alignment:
+   - `mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p$DB_PASSWORD $DB_NAME < scripts/migrations/001_align_dataset.sql`
+5. Import Excel real dataset:
    - `npm run db:import -- ./dataset.xlsx`
 6. Jalankan aplikasi:
    - `npm run dev`
 
-## Tabel Real Dataset (wajib)
+## Tabel Wajib (5 tabel)
 - `users`
 - `material_master`
 - `material_stock`
 - `material_plant_data`
 - `material_movement`
 
-Semua kolom menggunakan camelCase sesuai mapping dataset pada script import.
+## Mapping Dataset ke Kolom MySQL (camelCase)
+- `users`: `userId`, `username`, `email`, `password`, `role`, `createdOn`, `lastChange`
+- `material_master`: `partNumber`, `materialDescription`, `baseUnitOfMeasure`, `createdOn`, `createTime`, `createdBy`, `materialGroup`
+- `material_stock`: `partNumber`, `freeStock`, `plant`, `blocked`
+- `material_plant_data`: `partNumber`, `plant`, `reorderPoint`, `safetyStock`
+- `material_movement`: `partNumber`, `plant`, `materialDescription`, `postingDate`, `movementType`, `orderNo`, `purchaseOrder`, `quantity`, `baseUnitOfMeasure`, `amtInLocCur`, `userName`
 
-## Arsitektur
-- DB pool: `src/lib/db/mysql.ts`
-- Query layer parameterized: `src/lib/db/queries.ts`
-- Route tipis: `src/app/api/**/route.ts`
-- Handler bisnis: `src/features/**/api/*.server.ts`
-- Mapping UI: `src/features/**/utils/*mapper.ts`
+## Arsitektur Inti
+- Pool MySQL: `src/lib/db/mysql.ts`
+- Query helper ter-parameter: `src/lib/db/queries.ts`
+- API route tipis: `src/app/api/**/route.ts`
+- Handler server: `src/features/**/api/**/*.server.ts`
+- UI mapper: `src/features/**/utils/*.mapper.ts`
 
 ## Catatan Login Password
-Login mendukung dua format pada `users.password`:
-- Hash bcrypt (`$2...`) -> `bcrypt.compare`
-- Plain text -> dibandingkan langsung
-
-Jadi dataset lama/plain text dan dataset hash tetap kompatibel.
+`users.password` mendukung dua format:
+- bcrypt hash (`$2...`) -> `bcrypt.compare`
+- plaintext -> dibandingkan langsung
