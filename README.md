@@ -1,47 +1,19 @@
-# Warehouse Display System - PT Auto2000 Yasmin Bogor
+# Sistem Tampilan Pergudangan (Web)
 
-Aplikasi dashboard inventory berbasis Next.js + Prisma + MySQL untuk:
-- FSN classification
-- ROP alert
-- history movement/order
-- analytics dashboard
+Aplikasi fullstack Next.js + MySQL untuk Kepala Gudang dan Admin Gudang.
 
-## Quick Start
+## Setup cepat
+1. `npm install`
+2. Salin env: `cp .env.example .env`
+3. Buat database MySQL manual, misal `warehouse_db`
+4. Jalankan migrasi SQL: `mysql -u root -p warehouse_db < scripts/schema.sql`
+5. Seed data demo: `npm run db:seed`
+6. Jalankan app: `npm run dev`
 
-```bash
-cp .env.example .env
-docker compose up -d
-npm install
-npm run prisma:generate
-npm run prisma:migrate
-npm run prisma:seed
-npm run dev
-```
-
-## Login awal (seed)
-- Kepala Gudang: `kepala` / `kepala123`
-- Admin Gudang: `admin` / `admin123`
+## Akun default
+- Kepala Gudang: `kepala` / `password123`
+- Admin Gudang: `admin1` / `password123`, `admin2` / `password123`
 
 ## Struktur
-- `app/`: halaman dan API route handler
-- `components/`: komponen UI
-- `lib/`: auth, prisma, validasi, utilities
-- `server/`: business logic domain
-- `prisma/`: schema dan seed
-- `tests/`: unit tests
-
-## Endpoint utama
-- `POST /api/auth/login`
-- `POST /api/auth/logout`
-- `GET/POST /api/users`
-- `GET/POST /api/items`
-- `GET /api/stock`
-- `GET/POST /api/orders`
-- `POST /api/orders/:id/receive-qc`
-- `GET/POST /api/movements`
-- `GET /api/dashboard/summary`
-- `GET /api/dashboard/fsn`
-- `GET /api/export/movements.xlsx`
-
-## Konfigurasi MySQL
-Ubah `DATABASE_URL` di `.env` sesuai host/user/password database Anda.
+Semua page tipis di `src/app/**/page.tsx` dan route handler tipis di `src/app/api/**/route.ts`.
+Logic utama ada di `src/features/**` dan `src/lib/**`.

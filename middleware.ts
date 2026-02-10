@@ -1,21 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
+import { verifySessionToken } from "@/features/auth/api/auth.server";
 
-export function middleware(req: NextRequest) {
-  const token = req.cookies.get('session_token')?.value;
-  const isAuthPage = req.nextUrl.pathname.startsWith('/login');
-  const isApiAuth = req.nextUrl.pathname.startsWith('/api/auth');
+const protectedRoutes = ["/dashboard", "/api"];
 
-  if (!token && !isAuthPage && !isApiAuth) {
-    return NextResponse.redirect(new URL('/login', req.url));
-  }
-
-  if (token && isAuthPage) {
-    return NextResponse.redirect(new URL('/manager', req.url));
-  }
-
+export async function middleware(req: NextRequest) {
+  if (!protectedRoutes.some((x) => req.nextUrl.pathname.startsWith(x))) return NextResponse.next();
+  const token = req.cookies.get("session")?.value;
+  if (!token) return NextResponse.redirect(new URL("/login", req.url));
+  const session = await verifySessionToken(token);
+  if (!session) return NextResponse.redirect(new URL("/login", req.url));
+  const adminOnly = req.nextUrl.pathname.startsWith("/dashboard/admin");
+  if (adminOnly && session.role !== "ADMIN_GUDANG") return NextResponse.redirect(new URL("/", req.url));
   return NextResponse.next();
 }
 
-export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)']
-};
+export const config = { matcher: ["/dashboard/:path*", "/api/:path*"] };
