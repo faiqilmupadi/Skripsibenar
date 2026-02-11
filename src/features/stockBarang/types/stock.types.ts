@@ -1,10 +1,10 @@
 export type StockRow = {
-  id: string;
-  name: string;
+  partNumber: string;
+  materialDescription: string;
   plant: string;
   freeStock: number;
-  blockedStock: number;
-  rop: number;
+  blocked: number;
+  reorderPoint: number;
 };
 
-export const stockDeltaText = (d: number) => (d > 0 ? `+${d}` : `${d}`);
+export const stockDeltaText = (delta: number) => (delta > 0 ? `+${delta}` : `${delta}`);

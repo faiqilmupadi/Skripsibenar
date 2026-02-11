@@ -1,11 +1,13 @@
-export function mapStockRow(row: any) {
+import { StockRow } from "@/features/stockBarang/types/stock.types";
+
+export function mapStockRow(row: StockRow) {
   return {
-    id: row.id,
-    name: row.name,
+    partNumber: row.partNumber,
+    materialDescription: row.materialDescription,
     plant: row.plant,
-    rop: Number(row.rop),
-    freeStock: Number(row.free_stock),
-    blockedStock: Number(row.blocked_stock)
+    reorderPoint: Number(row.reorderPoint),
+    freeStock: Number(row.freeStock),
+    blocked: Number(row.blocked)
   };
 }
 

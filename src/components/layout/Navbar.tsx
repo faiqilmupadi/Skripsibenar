@@ -1,9 +1,12 @@
-"use client";
-import { authClient } from "@/features/auth/api/auth.client";
-import { useRouter } from "next/navigation";
-
 export function Navbar() {
-  const router = useRouter();
-  const logout = async () => { await authClient.logout(); router.push("/login"); };
-  return <header className="bg-blue-700 p-3 text-white"><div className="mx-auto flex max-w-7xl justify-between"><b>Warehouse</b><button onClick={logout}>Logout</button></div></header>;
+  return (
+    <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
+      <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">Warehouse Monitoring</p>
+          <h1 className="text-lg font-semibold text-slate-800">Sistem Tampilan Pergudangan</h1>
+        </div>
+      </div>
+    </header>
+  );
 }

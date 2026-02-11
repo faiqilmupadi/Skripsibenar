@@ -1,9 +1,24 @@
+export type MaterialMovementRow = {
+  movementId: number;
+  partNumber: string;
+  plant: string;
+  materialDescription: string | null;
+  postingDate: string;
+  movementType: string;
+  orderNo: string | null;
+  purchaseOrder: string | null;
+  quantity: number;
+  baseUnitOfMeasure: string | null;
+  amtInLocCur: number | null;
+  userName: string | null;
+};
+
 export type HistoryRow = {
-  id: number;
-  itemName: string;
+  movementId: number;
+  partNumber: string;
   userName: string;
-  type: string;
-  createdAt: string;
+  movementType: string;
+  postingDate: string;
 };
 
 export const formatType = (x: string) => x;

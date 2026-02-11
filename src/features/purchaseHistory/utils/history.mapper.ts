@@ -1,11 +1,12 @@
-export function mapHistoryRow(row: any) {
+import { MaterialMovementRow } from "@/features/purchaseHistory/types/history.types";
+
+export function mapHistoryRow(row: MaterialMovementRow) {
   return {
-    id: Number(row.id),
-    itemName: row.item_name,
-    userName: row.user_name,
-    type: row.type,
-    createdAt: row.created_at,
-    note: row.note
+    movementId: Number(row.movementId),
+    partNumber: row.partNumber,
+    userName: row.userName || "-",
+    movementType: row.movementType,
+    postingDate: row.postingDate
   };
 }
 

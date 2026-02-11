@@ -11,9 +11,9 @@ async function nextUserId() {
 export async function usersHandler(req: Request) {
   try {
     if (req.method === "GET") {
-      const sql = "SELECT userId id,username,email,role,lastChange FROM users WHERE role='ADMIN_GUDANG'";
+      const sql = "SELECT userId,username,email,role,createdOn,lastChange FROM users WHERE role='ADMIN_GUDANG'";
       const rows = await q<any[]>(sql);
-      return ok(rows.map((x) => ({ ...x, status: "ACTIVE", name: x.username })));
+      return ok(rows.map((x) => ({ ...x, status: "ACTIVE" })));
     }
     const body = accountSchema.parse(await req.json());
     if (req.method === "POST") {
@@ -24,7 +24,7 @@ export async function usersHandler(req: Request) {
       await exec(sql, [id, body.username, body.email, password, "ADMIN_GUDANG", new Date(), new Date()]);
     }
     if (req.method === "PUT") {
-      await exec("UPDATE users SET username=?,email=?,role=?,lastChange=? WHERE userId=?", [body.username, body.email, body.role || "ADMIN_GUDANG", new Date(), body.id]);
+      await exec("UPDATE users SET username=?,email=?,role=?,lastChange=? WHERE userId=?", [body.username, body.email, body.role || "ADMIN_GUDANG", new Date(), body.userId]);
     }
     return ok({ success: true });
   } catch (e) {
