@@ -40,9 +40,31 @@ async function run() {
     VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE reorderPoint=VALUES(reorderPoint),safetyStock=VALUES(safetyStock)`,
     plants.map((x) => [x["Part Number"], x.Plant, toNumber(x["Reorder Point"]), toNumber(x["Safety Stock"])]));
 
+  const skipped: Row[] = [];
+  const filteredMovements = movements
+    .filter((x) => {
+      const movementType = String(x["Movement type"] || "");
+      const allowed = isAllowedMovementType(movementType);
+      if (!allowed) skipped.push(x);
+      return allowed;
+    })
+    .map((x) => [
+      x["Part Number"],
+      x.Plant,
+      x["Material Description"],
+      toDate(x["Posting Date"]),
+      x["Movement type"],
+      x.Order || null,
+      x["Purchase order"] || null,
+      toNumber(x.Quantity),
+      x["Base Unit of Measure"],
+      toNumber(x["Amt.in Loc.Cur."]),
+      x["User Name"]
+    ]);
+
   await upsert(`INSERT INTO material_movement(partNumber,plant,materialDescription,postingDate,movementType,orderNo,purchaseOrder,quantity,baseUnitOfMeasure,amtInLocCur,userName)
     VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
-    movements.map((x) => [x["Part Number"], x.Plant, x["Material Description"], toDate(x["Posting Date"]), x["Movement type"], x.Order || null, x["Purchase order"] || null, toNumber(x.Quantity), x["Base Unit of Measure"], toNumber(x["Amt.in Loc.Cur."]), x["User Name"]]));
+    filteredMovements);
 
   if (skipped.length > 0) console.log(`Skipped ${skipped.length} movement rows due to invalid movementType.`);
   console.log(`Import selesai dari ${file}`);

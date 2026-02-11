@@ -1,11 +1,14 @@
-export function mapAccountRow(row: any) {
+import { Account, UserDbRow } from "@/features/accountManagement/types/accounts.types";
+
+export function mapAccountRow(row: UserDbRow): Account {
   return {
-    id: Number(row.id),
-    name: row.name || row.username,
+    userId: Number(row.userId),
     username: row.username,
     email: row.email,
     role: row.role,
-    status: row.status || "ACTIVE"
+    createdOn: row.createdOn,
+    lastChange: row.lastChange,
+    status: "ACTIVE"
   };
 }
 

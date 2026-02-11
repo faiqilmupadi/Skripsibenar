@@ -1,24 +1,16 @@
-export type ItemDbRow = {
-  code: string;
-  name: string;
-  unit: string;
-  plant: string;
-  rop: number;
-  safetyStock: number;
-  free_stock: number;
-  blocked_stock: number;
-};
+import { Item, MaterialPlantDataRow, MaterialStockRow, MaterialMasterRow } from "@/features/itemCatalog/types/items.types";
 
-export function mapItemRow(row: ItemDbRow) {
+type ItemDbRow = MaterialMasterRow & MaterialStockRow & MaterialPlantDataRow;
+
+export function mapItemRow(row: ItemDbRow): Item {
   return {
-    id: row.code,
-    code: row.code,
-    name: row.name,
-    unit: row.unit,
+    partNumber: row.partNumber,
+    materialDescription: row.materialDescription,
+    baseUnitOfMeasure: row.baseUnitOfMeasure,
     plant: row.plant,
-    rop: Number(row.rop),
+    reorderPoint: Number(row.reorderPoint || 0),
     safetyStock: Number(row.safetyStock || 0),
-    freeStock: Number(row.free_stock || 0),
-    blockedStock: Number(row.blocked_stock || 0)
+    freeStock: Number(row.freeStock || 0),
+    blocked: Number(row.blocked || 0)
   };
 }
